@@ -92,8 +92,20 @@ public class TransactionLibrary {
 
     private static void emitTransaction(JSONObject transaction, Callback callback) {
         socket.emit(EVENT_REQUEST, new Object[]{transaction}, (Object... args) -> {
-            if (callback != null) {
-                callback.call(args);
+            if (callback != null && args.length > 0 && args[0] instanceof org.json.JSONArray) {
+                try {
+                    org.json.JSONArray responseArray = (org.json.JSONArray) args[0];
+                    if (responseArray.length() > 0) {
+                        JSONObject lastResponse = responseArray.getJSONObject(responseArray.length() - 1);
+                        boolean status = lastResponse.optBoolean("status", false);
+                        callback.call(status);
+                    }
+                } catch (Exception e) {
+                    System.out.println(RED + "Erreur lors de l'extraction du boolean : " + e.getMessage() + RESET);
+                    callback.call(false); // Valeur par défaut en cas d'erreur
+                }
+            } else {
+                callback.call(false); // Si args est vide ou mal formaté
             }
             disconnect();
         });
